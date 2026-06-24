@@ -1,8 +1,3 @@
-
-Purity Ng'wono
-1:25 AM (0 minutes ago)
-to me
-
 from flask import Flask, request
 from twilio.twiml.messaging_response import MessagingResponse
 from twilio.rest import Client
