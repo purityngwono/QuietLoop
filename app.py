@@ -1,3 +1,8 @@
+
+Purity Ng'wono
+1:25 AM (0 minutes ago)
+to me
+
 from flask import Flask, request
 from twilio.twiml.messaging_response import MessagingResponse
 from twilio.rest import Client
@@ -8,10 +13,14 @@ import os
 
 app = Flask(__name__)
 
+# ===== WAKE ROUTE FOR CRON-JOB =====
+@app.route("/", methods=["GET"])
+def wake():
+    return "Quiet Loop is awake! 💙", 200
+
 # ===== TWILIO CREDENTIALS =====
-# Get these from Twilio Console → Dashboard
 ACCOUNT_SID = "AC564a593b6421d0146c76daa" # Replace with yours
-AUTH_TOKEN = "5e4087a6660c392f29582fdd93a4ad69" # Replace with yours
+AUTH_TOKEN = "[AuthToken]" # Replace with yours
 FROM_NUMBER = "whatsapp:+14155238886"
 
 twilio_client = Client(ACCOUNT_SID, AUTH_TOKEN)
@@ -32,7 +41,6 @@ advice_list = [
 
 # ===== USER DATA =====
 user_state = {}
-user_name = {} # Store user's name if they share it
 
 # ===== SEND MESSAGE FUNCTION =====
 def send_whatsapp(to_number, message):
@@ -50,7 +58,7 @@ def send_whatsapp(to_number, message):
 def morning_checkin():
     print(f"🌅 Morning check-in at {datetime.datetime.now()}")
     for user in user_state.keys():
-        send_whatsapp(user, "🌅 Rise and shine! Wake up - let's go conquer today. You've got this. \n\nWhat's one thing you're grateful for today?")
+        send_whatsapp(user, "🌅 Rise and shine! Wake up — let's go conquer today. You've got this. 💪\n\nWhat's one thing you're grateful for today?")
 
 # ===== EVENING CHECK-IN =====
 def evening_checkin():
@@ -60,8 +68,8 @@ def evening_checkin():
 
 # ===== SCHEDULER =====
 scheduler = BackgroundScheduler()
-scheduler.add_job(morning_checkin, 'cron', hour=8, minute=0) # 8:00 AM
-scheduler.add_job(evening_checkin, 'cron', hour=20, minute=0) # 8:00 PM
+scheduler.add_job(morning_checkin, 'cron', hour=8, minute=0)
+scheduler.add_job(evening_checkin, 'cron', hour=20, minute=0)
 scheduler.start()
 
 # ===== FLASK ROUTE =====
@@ -127,3 +135,4 @@ def bot():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port, debug=True)
+
