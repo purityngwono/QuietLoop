@@ -6,6 +6,9 @@ import random
 import datetime
 import os
 import database
+print("Creating database tables...")
+database.create_tables()
+print("Database setup complete!")
 
 app = Flask(__name__)
 
