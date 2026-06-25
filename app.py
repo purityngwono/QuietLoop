@@ -1,3 +1,8 @@
+
+Purity Ng'wono
+10:57 PM (1 minute ago)
+to me
+
 from flask import Flask, request
 from twilio.twiml.messaging_response import MessagingResponse
 from twilio.rest import Client
@@ -15,23 +20,39 @@ def wake():
 
 # ===== TWILIO CREDENTIALS =====
 ACCOUNT_SID = "AC564a593b6421d0146c76daa" # Replace with yours
-AUTH_TOKEN = "[AuthToken]" # Replace with yours
+AUTH_TOKEN = "5e4087a6660c392f29582fd9d93a4ad69" # Replace with yours
 FROM_NUMBER = "whatsapp:+14155238886"
 
 twilio_client = Client(ACCOUNT_SID, AUTH_TOKEN)
 
-# ===== ADVICE LIST =====
-advice_list = [
-    "You don't have to be perfect to be worthy. Just showing up is enough.",
-    "Rest is not laziness. It's repair. Take the break you deserve.",
-    "Nobody remembers your mistakes as much as you do. Forgive yourself.",
-    "Small steps still move you forward. Keep going, even if it's slow.",
-    "You are not what happened to you. You are what you choose to become.",
-    "Your value doesn't decrease when your energy does. You're still enough.",
-    "The quiet ones often have the loudest wisdom. Trust your voice.",
-    "You don't need permission to exist exactly as you are right now.",
-    "Sometimes healing looks like doing nothing. That's okay.",
-    "Your goal today was enough. Tomorrow is another chance."
+# ===== WISDOM LIBRARY (NF + Classics) =====
+wisdom = [
+    # NF-inspired
+    "You got your own shoes — don't try fitting in other people's to match the vibe they have.",
+    "I wasn't born to fit in — I was born to stand out.",
+    "Why you always worried 'bout what people think? They don't even know you.",
+    "It's okay to not be okay — just don't stay that way.",
+    "The only person you should try to be better than is the person you were yesterday.",
+    "You can't heal what you won't reveal.",
+    "I'm not perfect, but I'm perfectly me.",
+    "Sometimes the ones that shine the brightest are the ones that have been through the darkest storms.",
+    "I don't need your validation — I know who I am.",
+    "If you're not growing, you're dying.",
+    
+    # Classic wisdom
+    "You are not a drop in the ocean. You are the entire ocean in a drop. — Rumi",
+    "The wound is the place where the Light enters you. — Rumi",
+    "Do not judge me by my successes, judge me by how many times I fell down and got back up. — Mandela",
+    "Be the change you wish to see in the world. — Gandhi",
+    "The quieter you become, the more you can hear. — Ram Dass",
+    "What lies behind us and what lies before us are tiny matters compared to what lies within us. — Emerson",
+    "The greatest glory in living lies not in never falling, but in rising every time we fall. — Mandela",
+    "Peace comes from within. Do not seek it without. — Buddha",
+    "What you do makes a difference, and you have to decide what kind of difference you want to make. — Jane Goodall",
+    "The best time to plant a tree was 20 years ago. The second best time is now. — Chinese Proverb",
+    "A person who never made a mistake never tried anything new. — Einstein",
+    "It is not how much we have, but how much we enjoy, that makes happiness. — Spurgeon",
+    "The purpose of our lives is to be happy. — Dalai Lama",
 ]
 
 # ===== USER DATA =====
@@ -52,14 +73,22 @@ def send_whatsapp(to_number, message):
 # ===== MORNING CHECK-IN =====
 def morning_checkin():
     print(f"🌅 Morning check-in at {datetime.datetime.now()}")
+    daily_wisdom = random.choice(wisdom)
     for user in user_state.keys():
-        send_whatsapp(user, "🌅 Rise and shine! Wake up — let's go conquer today. You've got this. 💪\n\nWhat's one thing you're grateful for today?")
+        send_whatsapp(
+            user,
+            f"🌅 Rise and shine! Wake up — let's go conquer today. You've got this. 💪\n\n📖 Daily wisdom:\n{daily_wisdom}\n\nWhat's one thing you're grateful for today?"
+        )
 
 # ===== EVENING CHECK-IN =====
 def evening_checkin():
     print(f"🌙 Evening check-in at {datetime.datetime.now()}")
+    evening_wisdom = random.choice(wisdom)
     for user in user_state.keys():
-        send_whatsapp(user, "🌙 You made it through another day. Proud of you.\n\nHow did today go? Did you achieve what you wanted to? Reply 'yes' or 'no'.")
+        send_whatsapp(
+            user,
+            f"🌙 You made it through another day. Proud of you.\n\n📖 Evening reflection:\n{evening_wisdom}\n\nHow did today go? Did you achieve what you wanted to? Reply 'yes' or 'no'."
+        )
 
 # ===== SCHEDULER =====
 scheduler = BackgroundScheduler()
@@ -107,7 +136,7 @@ def bot():
             msg.body("Please reply 'yes' or 'no'.")
             return str(resp)
         
-        advice = random.choice(advice_list)
+        advice = random.choice(wisdom) # Uses wisdom list instead of old advice list
         msg.body(f"{advice}\n\nWant me to share your words anonymously with someone who might need them?\n1. Yes\n2. No")
         user_state[sender] = "share_question"
     
