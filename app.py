@@ -124,7 +124,8 @@ def bot():
     journal_state[sender] = journal_state.get(sender, "menu")
 
     # ===== JOURNAL HANDLING =====
-    if incoming_msg == "journal" and state != "journal":
+    if incoming_msg == "journal" or incoming_msg == "journal" and state != "journal":
+        print(f"Journal command received from {sender}") # Debug line
         msg.body("📖 Quiet Loop Journal\n\nWhat would you like to see?\n1. Today's entries\n2. This week's entries\n3. All entries\n4. By date (e.g., 25 June)\n\nReply with 1, 2, 3, or 4.")
         user_state[sender] = "journal"
         journal_state[sender] = "menu"
