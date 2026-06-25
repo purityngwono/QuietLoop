@@ -42,7 +42,7 @@ def get_entries(user_number, days=None, specific_date=None):
             WHERE user_number = ? AND DATE(timestamp) = ?
             ORDER BY timestamp DESC
         """, (user_number, specific_date))
-    elif days:
+    elif days is not None:
         cursor.execute("""
             SELECT timestamp, entry_type, message FROM journal
             WHERE user_number = ? AND DATE(timestamp) >= DATE('now', ?)
