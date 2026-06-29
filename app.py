@@ -89,6 +89,7 @@ def format_journal(entries):
 # ===== MORNING CHECK-IN =====
 def morning_checkin():
     print(f"🌅 Morning check-in at {datetime.datetime.now()}")
+    print(f" Users in state: {list(user_state.keys())}")
     daily_wisdom = random.choice(wisdom)
     for user in user_state.keys():
         send_whatsapp(user, f"🌅 Rise and shine! Let's go conquer today. 💪\n\n📖 Daily wisdom:\n{daily_wisdom}\n\nWhat's one thing you're grateful for today?")
@@ -105,6 +106,7 @@ scheduler = BackgroundScheduler()
 scheduler.add_job(morning_checkin, 'cron', hour=8, minute=0)
 scheduler.add_job(evening_checkin, 'cron', hour=20, minute=0)
 scheduler.start()
+print("Scheduler started! Check-ins are active.") # ADD THIS LINE
 
 # ===== FLASK ROUTE =====
 @app.route("/bot", methods=["POST"])
