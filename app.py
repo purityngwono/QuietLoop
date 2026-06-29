@@ -54,7 +54,6 @@ wisdom = [
 ]
 
 # ===== USER DATA =====
-user_state = {}
 journal_state = {}
 user_reply_store = {}
 
@@ -134,7 +133,7 @@ def bot():
     resp = MessagingResponse()
     msg = resp.message()
 
-    state = user_state.get(sender, "start")
+    state = database.get_user_state(sender)
     journal_state[sender] = journal_state.get(sender, "menu")
 
     # ===== JOURNAL COMMAND =====
