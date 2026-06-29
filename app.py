@@ -7,6 +7,7 @@ import datetime
 import os
 import database
 import matcher
+
 print("Creating database tables...")
 database.create_tables()
 print("Database setup complete!")
@@ -16,7 +17,7 @@ app = Flask(__name__)
 # ===== WAKE ROUTE =====
 @app.route("/", methods=["GET"])
 def wake():
-    return "Quiet Loop is awake! 💙", 200
+    return "Quiet Loop is awake! ❤️", 200
 
 # ===== TWILIO CREDENTIALS =====
 ACCOUNT_SID = "AC564a593b6421d0146c76daa"
@@ -55,6 +56,7 @@ wisdom = [
 # ===== USER DATA =====
 user_state = {}
 journal_state = {}
+user_reply_store = {}
 
 # ===== SEND MESSAGE =====
 def send_whatsapp(to_number, message):
@@ -76,6 +78,20 @@ def save_journal_entry(user_number, entry_type, message):
     except Exception as e:
         print(f"❌ Failed to save journal: {e}")
 
+def save_entry_with_topic(user_number, entry_type, message, topic):
+    try:
+        database.save_entry_with_topic(user_number, entry_type, message, topic)
+        print(f"📖 Saved entry with topic '{topic}' for {user_number}")
+    except Exception as e:
+        print(f"❌ Failed to save entry with topic: {e}")
+
+def find_match(user_number, topic):
+    try:
+        return database.find_match(user_number, topic)
+    except Exception as e:
+        print(f"❌ Failed to find match: {e}")
+        return None
+
 # ===== FORMAT JOURNAL =====
 def format_journal(entries):
     if not entries:
@@ -90,7 +106,7 @@ def format_journal(entries):
 # ===== MORNING CHECK-IN =====
 def morning_checkin():
     print(f"🌅 Morning check-in at {datetime.datetime.now()}")
-    print(f" Users in state: {list(user_state.keys())}")
+    print(f"👥 Users in state: {list(user_state.keys())}")
     daily_wisdom = random.choice(wisdom)
     for user in user_state.keys():
         send_whatsapp(user, f"🌅 Rise and shine! Let's go conquer today. 💪\n\n📖 Daily wisdom:\n{daily_wisdom}\n\nWhat's one thing you're grateful for today?")
@@ -98,6 +114,7 @@ def morning_checkin():
 # ===== EVENING CHECK-IN =====
 def evening_checkin():
     print(f"🌙 Evening check-in at {datetime.datetime.now()}")
+    print(f"👥 Users in state: {list(user_state.keys())}")
     evening_wisdom = random.choice(wisdom)
     for user in user_state.keys():
         send_whatsapp(user, f"🌙 You made it through another day. Proud of you.\n\n📖 Evening reflection:\n{evening_wisdom}\n\nHow did today go? Reply 'yes' or 'no'.")
@@ -107,7 +124,7 @@ scheduler = BackgroundScheduler()
 scheduler.add_job(morning_checkin, 'cron', hour=8, minute=0)
 scheduler.add_job(evening_checkin, 'cron', hour=20, minute=0)
 scheduler.start()
-print("Scheduler started! Check-ins are active.") # ADD THIS LINE
+print("✅ Scheduler started! Check-ins are active.")
 
 # ===== FLASK ROUTE =====
 @app.route("/bot", methods=["POST"])
@@ -170,7 +187,7 @@ def bot():
             user_state[sender] = "menu"
         else:
             msg.body("Reply with 'join' to start.")
-    
+
     elif state == "menu":
         if incoming_msg == "1":
             msg.body("How has life been treating you lately? Be honest — this is a safe space.")
@@ -180,12 +197,13 @@ def bot():
             user_state[sender] = "start"
         else:
             msg.body("Reply:\n1. Start conversation\n2. Not today")
-    
+
     elif state == "life_question":
+        user_reply_store[sender] = incoming_msg
         save_journal_entry(sender, "life_checkin", incoming_msg)
         msg.body("Did you achieve what you set out to do today? Reply 'yes' or 'no'.")
         user_state[sender] = "goal_question"
-    
+
     elif state == "goal_question":
         if "yes" in incoming_msg:
             save_journal_entry(sender, "goal_achievement", incoming_msg)
@@ -196,46 +214,44 @@ def bot():
         else:
             msg.body("Please reply 'yes' or 'no'.")
             return str(resp)
-        
+
         advice = random.choice(wisdom)
         msg.body(f"{advice}\n\nWant to share your words anonymously?\n1. Yes\n2. No")
         user_state[sender] = "share_question"
-    
-   elif state == "share_question":
-    if incoming_msg == "1":
-        # Get the user's last reply (stored temporarily)
-        user_reply = request.values.get("Body", "").strip()
-        topic = matcher.detect_topic(user_reply)
-        save_entry_with_topic(sender, "shared_anonymously", user_reply, topic)
-        
-        # Check for match
-        match = find_match(sender, topic)
-        if match:
-            match_user, match_message = match
-            msg.body(f"💙 Someone else felt this too.\n\n\"{match_message}\"\n\nYou're not alone. Would you like to connect with this person anonymously?\nReply 1 for Yes, 2 for No.")
-            user_state[sender] = "match_offer"
-        else:
-            msg.body("Your words matter. They'll reach someone who needs them today. Stay strong. 💙")
+
+    elif state == "share_question":
+        if incoming_msg == "1":
+            user_reply = user_reply_store.get(sender, "")
+            topic = matcher.detect_topic(user_reply)
+            save_entry_with_topic(sender, "shared_anonymously", user_reply, topic)
+
+            match = find_match(sender, topic)
+            if match:
+                match_user, match_message = match
+                msg.body(f"💙 Someone else felt this too.\n\n\"{match_message}\"\n\nYou're not alone. Would you like to connect with this person anonymously?\nReply 1 for Yes, 2 for No.")
+                user_state[sender] = "match_offer"
+            else:
+                msg.body("Your words matter. They'll reach someone who needs them today. Stay strong. 💙")
+                user_state[sender] = "start"
+        elif incoming_msg == "2":
+            save_journal_entry(sender, "shared_anonymously", incoming_msg)
+            msg.body("I understand. Your words are safe with me. Take care. 💙")
             user_state[sender] = "start"
-    elif incoming_msg == "2":
-        save_journal_entry(sender, "shared_anonymously", incoming_msg)
-        msg.body("I understand. Your words are safe with me. Take care. 💙")
-        user_state[sender] = "start"
-    else:
-        msg.body("Reply 1 for Yes, 2 for No.")
-        return str(resp)
-        
+        else:
+            msg.body("Reply 1 for Yes, 2 for No.")
+            return str(resp)
+
     elif state == "match_offer":
-    if incoming_msg == "1":
-        msg.body("💙 We'll connect you anonymously. Your phone number stays private. Just be kind. 💙")
-        user_state[sender] = "start"
-    elif incoming_msg == "2":
-        msg.body("I understand. Maybe another time. 💙")
-        user_state[sender] = "start"
-    else:
-        msg.body("Reply 1 for Yes, 2 for No.")
-        return str(resp)
-    
+        if incoming_msg == "1":
+            msg.body("💙 We'll connect you anonymously. Your phone number stays private. Just be kind. 💙")
+            user_state[sender] = "start"
+        elif incoming_msg == "2":
+            msg.body("I understand. Maybe another time. 💙")
+            user_state[sender] = "start"
+        else:
+            msg.body("Reply 1 for Yes, 2 for No.")
+            return str(resp)
+
     else:
         msg.body("Reply with 'join' to start.")
         user_state[sender] = "start"
@@ -243,6 +259,6 @@ def bot():
     return str(resp)
 
 if __name__ == "__main__":
-    database.create_tables()
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port, debug=True)
+
