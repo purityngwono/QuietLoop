@@ -6,6 +6,7 @@ import random
 import datetime
 import os
 import database
+import matcher
 print("Creating database tables...")
 database.create_tables()
 print("Database setup complete!")
@@ -200,17 +201,40 @@ def bot():
         msg.body(f"{advice}\n\nWant to share your words anonymously?\n1. Yes\n2. No")
         user_state[sender] = "share_question"
     
-    elif state == "share_question":
-        if incoming_msg == "1":
-            save_journal_entry(sender, "shared_anonymously", incoming_msg)
-            msg.body("Your words matter. They'll reach someone who needs them today. Stay strong. 💙")
-        elif incoming_msg == "2":
-            save_journal_entry(sender, "shared_anonymously", incoming_msg)
-            msg.body("I understand. Your words are safe with me. Take care. 💙")
+   elif state == "share_question":
+    if incoming_msg == "1":
+        # Get the user's last reply (stored temporarily)
+        user_reply = request.values.get("Body", "").strip()
+        topic = matcher.detect_topic(user_reply)
+        save_entry_with_topic(sender, "shared_anonymously", user_reply, topic)
+        
+        # Check for match
+        match = find_match(sender, topic)
+        if match:
+            match_user, match_message = match
+            msg.body(f"💙 Someone else felt this too.\n\n\"{match_message}\"\n\nYou're not alone. Would you like to connect with this person anonymously?\nReply 1 for Yes, 2 for No.")
+            user_state[sender] = "match_offer"
         else:
-            msg.body("Reply 1 for Yes, 2 for No.")
-            return str(resp)
+            msg.body("Your words matter. They'll reach someone who needs them today. Stay strong. 💙")
+            user_state[sender] = "start"
+    elif incoming_msg == "2":
+        save_journal_entry(sender, "shared_anonymously", incoming_msg)
+        msg.body("I understand. Your words are safe with me. Take care. 💙")
         user_state[sender] = "start"
+    else:
+        msg.body("Reply 1 for Yes, 2 for No.")
+        return str(resp)
+        
+    elif state == "match_offer":
+    if incoming_msg == "1":
+        msg.body("💙 We'll connect you anonymously. Your phone number stays private. Just be kind. 💙")
+        user_state[sender] = "start"
+    elif incoming_msg == "2":
+        msg.body("I understand. Maybe another time. 💙")
+        user_state[sender] = "start"
+    else:
+        msg.body("Reply 1 for Yes, 2 for No.")
+        return str(resp)
     
     else:
         msg.body("Reply with 'join' to start.")
