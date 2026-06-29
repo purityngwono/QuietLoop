@@ -105,17 +105,19 @@ def format_journal(entries):
 # ===== MORNING CHECK-IN =====
 def morning_checkin():
     print(f"🌅 Morning check-in at {datetime.datetime.now()}")
-    print(f"👥 Users in state: {list(user_state.keys())}")
+    users = database.get_all_users()
+    print(f"👥 Users in database: {users}")
     daily_wisdom = random.choice(wisdom)
-    for user in user_state.keys():
+    for user in users:
         send_whatsapp(user, f"🌅 Rise and shine! Let's go conquer today. 💪\n\n📖 Daily wisdom:\n{daily_wisdom}\n\nWhat's one thing you're grateful for today?")
 
 # ===== EVENING CHECK-IN =====
 def evening_checkin():
     print(f"🌙 Evening check-in at {datetime.datetime.now()}")
-    print(f"👥 Users in state: {list(user_state.keys())}")
+    users = database.get_all_users()
+    print(f"👥 Users in database: {users}")
     evening_wisdom = random.choice(wisdom)
-    for user in user_state.keys():
+    for user in users:
         send_whatsapp(user, f"🌙 You made it through another day. Proud of you.\n\n📖 Evening reflection:\n{evening_wisdom}\n\nHow did today go? Reply 'yes' or 'no'.")
 
 # ===== SCHEDULER =====
@@ -139,7 +141,7 @@ def bot():
     # ===== JOURNAL COMMAND =====
     if incoming_msg == "journal" and state != "journal":
         msg.body("📖 Quiet Loop Journal\n\nWhat would you like to see?\n1. Today's entries\n2. This week's entries\n3. All entries\n4. By date (e.g., 25 June 2026)\n\nReply with 1, 2, 3, or 4.")
-        user_state[sender] = "journal"
+        database.save_user_state(sender, "journal")
         journal_state[sender] = "menu"
         return str(resp)
 
@@ -148,17 +150,17 @@ def bot():
             if incoming_msg == "1":
                 entries = database.get_entries(sender, days=0)
                 msg.body(format_journal(entries))
-                user_state[sender] = "start"
+                database.save_user_state(sender, "start")
                 journal_state[sender] = "menu"
             elif incoming_msg == "2":
                 entries = database.get_entries(sender, days=7)
                 msg.body(format_journal(entries))
-                user_state[sender] = "start"
+                database.save_user_state(sender, "start")
                 journal_state[sender] = "menu"
             elif incoming_msg == "3":
                 entries = database.get_entries(sender)
                 msg.body(format_journal(entries))
-                user_state[sender] = "start"
+                database.save_user_state(sender, "start")
                 journal_state[sender] = "menu"
             elif incoming_msg == "4":
                 msg.body("📅 Please enter the date (e.g., 25 June 2026):")
@@ -175,7 +177,7 @@ def bot():
             except ValueError:
                 msg.body("❌ Invalid date. Please use: 25 June 2026")
                 return str(resp)
-            user_state[sender] = "start"
+            database.save_user_state(sender, "start")
             journal_state[sender] = "menu"
         return str(resp)
 
@@ -183,17 +185,17 @@ def bot():
     if state == "start":
         if "join" in incoming_msg:
             msg.body("Welcome to Quiet Loop. No calls. No video. Just words.\n\nReply:\n1. Start conversation\n2. Not today")
-            user_state[sender] = "menu"
+            database.save_user_state(sender, "menu")
         else:
             msg.body("Reply with 'join' to start.")
 
     elif state == "menu":
         if incoming_msg == "1":
             msg.body("How has life been treating you lately? Be honest — this is a safe space.")
-            user_state[sender] = "life_question"
+            database.save_user_state(sender, "life_question")
         elif incoming_msg == "2":
             msg.body("I understand. I'll be here when you're ready. Take care.")
-            user_state[sender] = "start"
+            database.save_user_state(sender, "start")
         else:
             msg.body("Reply:\n1. Start conversation\n2. Not today")
 
@@ -201,7 +203,7 @@ def bot():
         user_reply_store[sender] = incoming_msg
         save_journal_entry(sender, "life_checkin", incoming_msg)
         msg.body("Did you achieve what you set out to do today? Reply 'yes' or 'no'.")
-        user_state[sender] = "goal_question"
+        database.save_user_state(sender, "goal_question")
 
     elif state == "goal_question":
         if "yes" in incoming_msg:
@@ -216,7 +218,7 @@ def bot():
 
         advice = random.choice(wisdom)
         msg.body(f"{advice}\n\nWant to share your words anonymously?\n1. Yes\n2. No")
-        user_state[sender] = "share_question"
+        database.save_user_state(sender, "share_question")
 
     elif state == "share_question":
         if incoming_msg == "1":
@@ -228,14 +230,14 @@ def bot():
             if match:
                 match_user, match_message = match
                 msg.body(f"💙 Someone else felt this too.\n\n\"{match_message}\"\n\nYou're not alone. Would you like to connect with this person anonymously?\nReply 1 for Yes, 2 for No.")
-                user_state[sender] = "match_offer"
+                database.save_user_state(sender, "match_offer")
             else:
                 msg.body("Your words matter. They'll reach someone who needs them today. Stay strong. 💙")
-                user_state[sender] = "start"
+                database.save_user_state(sender, "start")
         elif incoming_msg == "2":
             save_journal_entry(sender, "shared_anonymously", incoming_msg)
             msg.body("I understand. Your words are safe with me. Take care. 💙")
-            user_state[sender] = "start"
+            database.save_user_state(sender, "start")
         else:
             msg.body("Reply 1 for Yes, 2 for No.")
             return str(resp)
@@ -243,17 +245,17 @@ def bot():
     elif state == "match_offer":
         if incoming_msg == "1":
             msg.body("💙 We'll connect you anonymously. Your phone number stays private. Just be kind. 💙")
-            user_state[sender] = "start"
+            database.save_user_state(sender, "start")
         elif incoming_msg == "2":
             msg.body("I understand. Maybe another time. 💙")
-            user_state[sender] = "start"
+            database.save_user_state(sender, "start")
         else:
             msg.body("Reply 1 for Yes, 2 for No.")
             return str(resp)
 
     else:
         msg.body("Reply with 'join' to start.")
-        user_state[sender] = "start"
+        database.save_user_state(sender, "start")
 
     return str(resp)
 
