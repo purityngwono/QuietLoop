@@ -20,6 +20,13 @@ def create_tables():
             matched INTEGER DEFAULT 0
         )
     """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_states (
+            user_number TEXT PRIMARY KEY,
+            state TEXT,
+            updated_at TEXT
+        )
+    """)
     conn.commit()
     conn.close()
     print("✅ Database tables created successfully!")
@@ -95,4 +102,30 @@ def mark_matched(user_number, match_user):
     conn.commit()
     conn.close()
 
-    return entries
+def save_user_state(user_number, state):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT OR REPLACE INTO user_states (user_number, state, updated_at)
+        VALUES (?, ?, ?)
+    """, (user_number, state, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+    conn.commit()
+    conn.close()
+
+def get_user_state(user_number):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT state FROM user_states WHERE user_number = ?
+    """, (user_number,))
+    result = cursor.fetchone()
+    conn.close()
+    return result[0] if result else "start"
+
+def get_all_users():
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT DISTINCT user_number FROM user_states")
+    users = cursor.fetchall()
+    conn.close()
+    return [u[0] for u in users]
