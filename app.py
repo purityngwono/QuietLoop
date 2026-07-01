@@ -20,7 +20,7 @@ def wake():
     return "Quiet Loop is awake! ❤️", 200
 
 # ===== TWILIO CREDENTIALS =====
-ACCOUNT_SID = "AC564a593b6421d0146c76daa"
+ACCOUNT_SID = "AC564a593b6421d0146c76da49da2ad53e"
 AUTH_TOKEN = "5e4087a6660c392f29582fd9d93a4ad69"
 FROM_NUMBER = "whatsapp:+14155238886"
 
