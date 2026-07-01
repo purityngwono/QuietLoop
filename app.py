@@ -191,6 +191,7 @@ def bot():
 
     elif state == "menu":
         if incoming_msg == "1":
+             print(f"Share triggered by {sender}. User reply: {user_reply_store.get(sender, '')}")
             msg.body("How has life been treating you lately? Be honest — this is a safe space.")
             database.save_user_state(sender, "life_question")
         elif incoming_msg == "2":
