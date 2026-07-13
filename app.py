@@ -170,7 +170,7 @@ def evening_wind_down():
 scheduler = BackgroundScheduler()
 scheduler.add_job(morning_checkin, 'cron', hour=8, minute=0)
 scheduler.add_job(evening_checkin, 'cron', hour=20, minute=0)
-scheduler.add_job(evening_wind_down, 'cron', hour=21, minute=0) # 9:00 PM
+scheduler.add_job(evening_wind_down, 'cron', hour=21, minute=0)
 scheduler.start()
 print("✅ Scheduler started! Check-ins are active.")
 
@@ -182,12 +182,13 @@ def bot():
     resp = MessagingResponse()
     msg = resp.message()
 
-    # ===== NORMALIZE MESSAGE (emoji + slang) =====
+    # Normalize message (emoji + slang)
     clean_msg = matcher.normalize_message(incoming_msg)
+
+    # Debug logs
     print(f"📩 Raw: {incoming_msg}")
     print(f"🧹 Clean: {clean_msg}")
-    print(f"🚨 Crisis check: {matcher.is_crisis(clean_msg)}")
-    print(f"📖 Journal check: {clean_msg == 'journal'}")
+    print(f"🚨 Crisis: {matcher.is_crisis(clean_msg)}")
 
     # ===== CRISIS CHECK (FIRST) =====
     if matcher.is_crisis(clean_msg):
@@ -250,7 +251,6 @@ def bot():
                 database.save_user_state(sender, "reply_to_match")
                 return str(resp)
             else:
-                # User sent: "reply This is my message"
                 reply_text = incoming_msg[6:].strip()
                 if reply_text:
                     database.save_reply(match_id, reply_text)
@@ -268,13 +268,11 @@ def bot():
     # ===== MAIN CONVERSATION =====
     if state == "start":
         if "join" in clean_msg:
-            # Check if returning user
             mood = database.get_mood(sender)
             if mood:
                 welcome = f"Welcome back. Last time you said life felt {mood}. How is today?"
             else:
                 welcome = "Welcome to Quiet Loop. No calls. No video. Just words."
-            
             msg.body(f"{welcome}\n\nReply:\n1. Start conversation\n2. Not today")
             database.save_user_state(sender, "menu")
         else:
@@ -295,11 +293,9 @@ def bot():
         user_reply_store[sender] = incoming_msg
         save_journal_entry(sender, "life_checkin", incoming_msg)
         
-        # Save mood for returning greeting
         mood = matcher.extract_mood(clean_msg)
         database.save_mood(sender, mood)
         
-        # Heavy message acknowledgment
         if matcher.is_heavy_message(clean_msg):
             ack = random.choice(poetic["acknowledgment"])
             msg.body(f"{ack}\n\nDid you achieve what you set out to do today? Reply 'yes' or 'no'.")
@@ -324,6 +320,8 @@ def bot():
         database.save_user_state(sender, "share_question")
 
     elif state == "share_question":
+        print(f"🔍 Share state: sender={sender}, clean_msg='{clean_msg}'")
+        
         if clean_msg == "1":
             user_reply = user_reply_store.get(sender, "")
             topic = matcher.detect_topic(clean_msg)
@@ -334,16 +332,18 @@ def bot():
                 matched_user, match_message = match
                 msg.body(f"💙 Someone else felt this too.\n\n\"{match_message}\"\n\nYou're not alone. Would you like to connect with this person anonymously?\n1. Yes\n2. No\n3. Send a quiet reply")
                 database.save_user_state(sender, "match_offer")
-                # Store match info for later
                 user_reply_store[sender + "_match_user"] = matched_user
                 user_reply_store[sender + "_match_message"] = match_message
             else:
                 msg.body("Your words matter. They'll reach someone who needs them today. Stay strong. 💙")
                 database.save_user_state(sender, "start")
+        
         elif clean_msg == "2":
+            print("✅ Option 2 triggered — decline")
             save_journal_entry(sender, "shared_anonymously", incoming_msg)
             msg.body("I understand. Your words are safe with me. Take care. 💙")
             database.save_user_state(sender, "start")
+        
         elif clean_msg == "3":
             match_data = database.get_match(sender)
             if match_data:
@@ -353,6 +353,7 @@ def bot():
             else:
                 msg.body("You don't have an active match to reply to.")
                 database.save_user_state(sender, "start")
+        
         else:
             msg.body("Reply 1 for Yes, 2 for No, or 3 for quiet reply.")
             return str(resp)
@@ -405,4 +406,3 @@ def bot():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port, debug=True)
-
