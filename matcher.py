@@ -118,9 +118,18 @@ crisis_keywords = [
     "suicidal", "suicide", "kill myself", "end my life",
     "want to die", "don't want to live", "better off dead",
     "i can't go on", "no reason to live", "wish i was dead",
-    "take my life", "end it all", "give up on life"
+    "take my life", "end it all", "give up on life",
+    "wanna die" # <-- Added this for your test
 ]
 
 def is_crisis(message):
+    # Check raw message first
+    raw_lower = message.lower()
+    for keyword in crisis_keywords:
+        if keyword in raw_lower:
+            return True
+    # Fallback to normalized
     clean_msg = normalize_message(message)
+    return any(keyword in clean_msg for keyword in crisis_keywords)
+
     return any(keyword in clean_msg for keyword in crisis_keywords)
