@@ -26,7 +26,7 @@ FROM_NUMBER = "whatsapp:+14155238886"
 
 twilio_client = Client(ACCOUNT_SID, AUTH_TOKEN)
 
-# ===== WISDOM LIBRARY (Poetic + NF-inspired) =====
+# ===== WISDOM LIBRARY =====
 wisdom = [
     "You showed up. Even if you didn't finish. Even if it was hard. That's not failure. That's surviving.",
     "The night is long, but you're still standing. That counts for more than you know.",
@@ -63,32 +63,27 @@ poetic = {
         "That sounds really heavy. Thank you for trusting this space with it.",
         "I hear you. That's not easy to say. Thank you for saying it here.",
         "That weight you're carrying — I see it. Thank you for letting me hold it for a moment.",
-        "That's a lot to carry. I'm glad you shared it here.",
     ],
     "farewell": [
         "The day is done. The night is for resting. Be gentle with yourself.",
         "You made it through today. That's enough. Sleep well.",
         "The sun is setting, and so are the worries of today. Let them go.",
-        "Rest now. Tomorrow is a new page.",
     ]
 }
 
-# ===== CRISIS RESPONSE (Global) =====
+# ===== CRISIS RESPONSE =====
 crisis_response = """I'm just a bot, but your life matters. ❤️
 
 Here are some humans who can help — available 24/7, anywhere in the world:
 
-🌍 **Global** (International)
-• Befrienders Worldwide: https://befrienders.org
-• International Association for Suicide Prevention: https://iasp.info
-
+🌍 **Global**: https://befrienders.org
 🇺🇸 **USA**: 988 Suicide & Crisis Lifeline — call or text 988
 🇬🇧 **UK**: Samaritans — call 116 123
 🇰🇪 **Kenya**: Befrienders Kenya — call +254 722 178 177
 🇿🇦 **South Africa**: SADAG — call 0800 567 567
 🇮🇳 **India**: iCall — call 022 2556 3291
 
-You're not alone. Please reach out to someone who can hold this with you. 💙"""
+You're not alone. Please reach out. 💙"""
 
 # ===== USER DATA =====
 journal_state = {}
@@ -133,32 +128,27 @@ def find_match(user_number, topic):
 def format_journal(entries):
     if not entries:
         return "📖 No entries found. Keep writing — your words matter. 💙"
-    
     formatted = "📖 Your Quiet Loop Journal:\n\n"
     for entry in entries:
         timestamp, entry_type, message = entry
         formatted += f"📅 {timestamp}\n {message}\n\n"
     return formatted + "---\nKeep writing. Your words matter. 💙"
 
-# ===== MORNING CHECK-IN =====
+# ===== CHECK-INS =====
 def morning_checkin():
     print(f"🌅 Morning check-in at {datetime.datetime.now()}")
     users = database.get_all_users()
-    print(f"👥 Users in database: {users}")
     daily_wisdom = random.choice(wisdom)
     for user in users:
         send_whatsapp(user, f"🌅 Rise and shine! Let's go conquer today. 💪\n\n📖 Daily wisdom:\n{daily_wisdom}\n\nWhat's one thing you're grateful for today?")
 
-# ===== EVENING CHECK-IN =====
 def evening_checkin():
     print(f"🌙 Evening check-in at {datetime.datetime.now()}")
     users = database.get_all_users()
-    print(f"👥 Users in database: {users}")
     evening_wisdom = random.choice(wisdom)
     for user in users:
         send_whatsapp(user, f"🌙 You made it through another day. Proud of you.\n\n📖 Evening reflection:\n{evening_wisdom}\n\nHow did today go? Reply 'yes' or 'no'.")
 
-# ===== EVENING WIND-DOWN (9 PM) =====
 def evening_wind_down():
     print(f"🌙 Evening wind-down at {datetime.datetime.now()}")
     users = database.get_all_users()
@@ -172,7 +162,7 @@ scheduler.add_job(morning_checkin, 'cron', hour=8, minute=0)
 scheduler.add_job(evening_checkin, 'cron', hour=20, minute=0)
 scheduler.add_job(evening_wind_down, 'cron', hour=21, minute=0)
 scheduler.start()
-print("✅ Scheduler started! Check-ins are active.")
+print("✅ Scheduler started!")
 
 # ===== FLASK ROUTE =====
 @app.route("/bot", methods=["POST"])
@@ -182,15 +172,10 @@ def bot():
     resp = MessagingResponse()
     msg = resp.message()
 
-    # Normalize message (emoji + slang)
+    # Normalize
     clean_msg = matcher.normalize_message(incoming_msg)
 
-    # Debug logs
-    print(f"📩 Raw: {incoming_msg}")
-    print(f"🧹 Clean: {clean_msg}")
-    print(f"🚨 Crisis: {matcher.is_crisis(clean_msg)}")
-
-    # ===== CRISIS CHECK (FIRST) =====
+    # ===== CRISIS CHECK =====
     if matcher.is_crisis(clean_msg):
         msg.body(crisis_response)
         return str(resp)
@@ -198,7 +183,7 @@ def bot():
     state = database.get_user_state(sender)
     journal_state[sender] = journal_state.get(sender, "menu")
 
-    # ===== JOURNAL COMMAND =====
+    # ===== JOURNAL =====
     if clean_msg == "journal" and state != "journal":
         msg.body("📖 Quiet Loop Journal\n\nWhat would you like to see?\n1. Today's entries\n2. This week's entries\n3. All entries\n4. By date (e.g., 25 June 2026)\n\nReply with 1, 2, 3, or 4.")
         database.save_user_state(sender, "journal")
@@ -293,16 +278,17 @@ def bot():
         user_reply_store[sender] = incoming_msg
         save_journal_entry(sender, "life_checkin", incoming_msg)
         
+        # Save mood
         mood = matcher.extract_mood(clean_msg)
         database.save_mood(sender, mood)
         
+        # Heavy acknowledgment
         if matcher.is_heavy_message(clean_msg):
             ack = random.choice(poetic["acknowledgment"])
             msg.body(f"{ack}\n\nDid you achieve what you set out to do today? Reply 'yes' or 'no'.")
-            database.save_user_state(sender, "goal_question")
         else:
             msg.body("Did you achieve what you set out to do today? Reply 'yes' or 'no'.")
-            database.save_user_state(sender, "goal_question")
+        database.save_user_state(sender, "goal_question")
 
     elif state == "goal_question":
         if "yes" in clean_msg:
@@ -320,11 +306,9 @@ def bot():
         database.save_user_state(sender, "share_question")
 
     elif state == "share_question":
-        print(f"🔍 Share state: sender={sender}, clean_msg='{clean_msg}'")
-        
         if clean_msg == "1":
             user_reply = user_reply_store.get(sender, "")
-            topic = matcher.detect_topic(clean_msg)
+            topic = matcher.detect_topic(user_reply)
             save_entry_with_topic(sender, "shared_anonymously", user_reply, topic)
 
             match = find_match(sender, topic)
@@ -337,13 +321,10 @@ def bot():
             else:
                 msg.body("Your words matter. They'll reach someone who needs them today. Stay strong. 💙")
                 database.save_user_state(sender, "start")
-        
         elif clean_msg == "2":
-            print("✅ Option 2 triggered — decline")
             save_journal_entry(sender, "shared_anonymously", incoming_msg)
             msg.body("I understand. Your words are safe with me. Take care. 💙")
             database.save_user_state(sender, "start")
-        
         elif clean_msg == "3":
             match_data = database.get_match(sender)
             if match_data:
@@ -353,7 +334,6 @@ def bot():
             else:
                 msg.body("You don't have an active match to reply to.")
                 database.save_user_state(sender, "start")
-        
         else:
             msg.body("Reply 1 for Yes, 2 for No, or 3 for quiet reply.")
             return str(resp)
