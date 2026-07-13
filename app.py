@@ -184,6 +184,9 @@ def bot():
 
     # ===== NORMALIZE MESSAGE (emoji + slang) =====
     clean_msg = matcher.normalize_message(incoming_msg)
+    print(f" Raw: {incoming_msg}")
+    print(f" Clean: {clean_msg}")
+    print(f" Crisis: {matcher.is_crisis(clean_msg)})
 
     # ===== CRISIS CHECK (FIRST) =====
     if matcher.is_crisis(clean_msg):
